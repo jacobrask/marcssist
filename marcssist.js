@@ -25,6 +25,7 @@ Marcssist.prototype.insert = function(style, selector) {
   declarations.forEach(function(decl) {
     this._prefix(decl.style);
   }, this);
+  insertRules(declarations);
   return className;
 };
 
@@ -67,6 +68,25 @@ Marcssist.prototype._prefix = function (style) {
   }
   return style;
 };
+
+var sheet = null;
+function createStyleSheet() {
+  var ss = document.createElement("style");
+  document.head.appendChild(ss);
+  sheet = ss.sheet;
+}
+
+function insertRules(rules) {
+  if (sheet === null) createStyleSheet();
+  rules.forEach(function(rule) {
+    var pairs = [], prop;
+    for (prop in rule.style) {
+      pairs.push(prop + ":" + rule.style[prop]);
+    }
+    console.log(pairs);
+    sheet.insertRule(rule.selector + "{" + pairs.join(";") + "}", 0);
+  });
+}
 
 
 function hyphenate(str) {
