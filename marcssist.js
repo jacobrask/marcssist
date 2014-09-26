@@ -58,17 +58,38 @@ Marcssist.prototype._process = function(sel, obj) {
 };
 
 Marcssist.prototype._prefix = function (style) {
-  var value, prop, values;
-
+  var value, prop, pfxProp;
   for (prop in style) {
     value = style[prop];
-
-    // assign the same values array to all aliased properties
-    style[prop] = values = [value];
+    if (pfxProp = prefixProp(prop)) {
+      style[pfxProp] = value;
+    }
   }
   return style;
 };
 
 function hyphenate(str) {
   return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase() });
+}
+
+
+var prefixRe = /^(-[a-z]+-)(.*)/;
+var prefixedProps = {};
+var prefix = null;
+function updatePrefixedProps() {
+  var style = window.getComputedStyle(document.documentElement);
+  var l = style.length, match, i;
+  for (i = 0; i < l; i++) {
+    if ((match = style[i].match(prefixRe)) && !(match[2] in style)) {
+      prefix || (prefix = match[1]);
+      prefixedProps[match[2]] = true;
+    }
+  }
+}
+
+function prefixProp(prop) {
+  if (prefix === null) updatePrefixedProps();
+  if (prefixedProps[prop]) {
+    return prefix + prop;
+  }
 }
