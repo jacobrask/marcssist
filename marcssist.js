@@ -21,7 +21,10 @@ var Marcssist = function(options) {
 Marcssist.prototype.insert = function(style, selector) {
   var className = "mx__"+(this._id++);
   selector = (selector ? selector+" ." : ".") + className;
-  this._process(selector, style);
+  var declarations = this._process(selector, style);
+  declarations.forEach(function(decl) {
+    this._prefix(decl.style);
+  }, this);
   return className;
 };
 
@@ -44,7 +47,7 @@ Marcssist.prototype._process = function(sel, obj) {
         this._process(sel + prop, value)
       );
     } else {
-      style[prop] = Array.isArray(value) ? value : [ value ];
+      style[hyphenate(prop)] = value;
     }
   }
   styles.push({
@@ -53,3 +56,19 @@ Marcssist.prototype._process = function(sel, obj) {
   });
   return styles;
 };
+
+Marcssist.prototype._prefix = function (style) {
+  var value, prop, values;
+
+  for (prop in style) {
+    value = style[prop];
+
+    // assign the same values array to all aliased properties
+    style[prop] = values = [value];
+  }
+  return style;
+};
+
+function hyphenate(str) {
+  return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase() });
+}
