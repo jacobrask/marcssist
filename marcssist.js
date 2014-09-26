@@ -58,20 +58,20 @@ Marcssist.prototype._process = function(sel, obj) {
 };
 
 Marcssist.prototype._prefix = function (style) {
-  var value, prop, pfxProp;
+  var value, prop, pfxProp, pfxVal;
   for (prop in style) {
     value = style[prop];
-    if (pfxProp = prefixProp(prop)) {
-      style[pfxProp] = value;
-    }
+    prop = prefixProp(prop) || prop;
+    value = prefixValue(value, prop) || value;
+    style[prop] = value;
   }
   return style;
 };
 
+
 function hyphenate(str) {
   return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase() });
 }
-
 
 var prefixRe = /^(-[a-z]+-)(.*)/;
 var prefixedProps = {};
@@ -91,5 +91,25 @@ function prefixProp(prop) {
   if (prefix === null) updatePrefixedProps();
   if (prefixedProps[prop]) {
     return prefix + prop;
+  }
+}
+
+var prefixedValues = {};
+var style = document.createElement("div").style;
+function prefixValue(value, prop) {
+  if (prefix === null) updatePrefixedProps();
+  // Cached
+  if (prefixedValues[prop] === value) {
+    return prefix + value;
+  }
+  style[prop] = "";
+  style[prop] = value;
+  // Supported
+  if (!!style[prop]) return;
+  style[prop] = prefix+value;
+  // Supported with prefix
+  if (!!style[prop]) {
+    prefixedValues[prop] = value;
+    return prefix + value;
   }
 }
