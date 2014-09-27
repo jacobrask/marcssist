@@ -52,7 +52,7 @@ function Marcssist(options) {
       // found an object, recurse with property as added selector
       if (isPlainObject(value)) {
         styles = styles.concat(
-          processStyles(sel + prop, value)
+          processStyles(sel + (prop[0] === ":" ? prop : " "+prop), value)
         );
       } else {
         style[hyphenate(prop)] = value;
@@ -88,7 +88,10 @@ function Marcssist(options) {
   function hyphenate(str) {
     return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase() });
   }
+
   function isPlainObject(obj) {
+    // If the object has a custom toString method, it's probably intended to
+    // be expanded to that rather than to child selectors
     return obj === Object(obj)
       && Object.prototype.toString === obj.toString;
   }
