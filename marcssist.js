@@ -11,6 +11,90 @@ var classId = 0;
 
 
 /**
+ * Reuse the same style sheet for all instances.
+ * @type {CSSStyleSheet?}
+ */
+
+var sharedSheet = null;
+
+
+/**
+ * Reuse the same detected vendor prefix for all instances.
+ * @type {string?}
+ */
+
+var currentPrefix = null;
+
+
+/**
+ * Properties assumed to need a vendor prefix. Properties should only be added
+ * to these lists if there are at least two separate implementations in recent
+ * versions of major browsers, where at least one of them are prefixed.
+ *
+ * @type {object}
+ */
+
+var prefixedProps = {
+  animation: true,
+  animationDelay: true,
+  animationDirection: true,
+  animationDuration: true,
+  animationFillMode: true,
+  animationIterationCount: true,
+  animationName: true,
+  animationPlayState: true,
+  animationTimingFunction: true,
+  appearance: true,
+  backfaceVisibility: true,
+  columns: true,
+  columnCount: true,
+  columnFill: true,
+  columnGap: true,
+  columnRule: true,
+  columnRuleColor: true,
+  columnRuleStyle: true,
+  columnRuleWidth: true,
+  columnSpan: true,
+  columnWidth: true,
+  alignContent: true,
+  alignItems: true,
+  alignSelf: true,
+  flex: true,
+  flexBasis: true,
+  flexDirection: true,
+  flexGrow: true,
+  flexShrink: true,
+  flexWrap: true,
+  justifyContent: true,
+  justifySelf: true,
+  fontSmoothing: true,
+  hyphens: true,
+  lineBoxContain: true,
+  lineBreak: true,
+  lineClamp: true,
+  order: true,
+  transform: true,
+  transformOrigin: true,
+  transformStyle: true,
+  userFocus: true,
+  userInput: true,
+  userModify: true,
+  userSelect: true
+};
+
+
+/**
+ * Values assumed to need a vendor prefix, if used with any of the properties
+ * specified in the object.
+ * @type {object}
+ */
+
+var prefixedValues = {
+  flex: { display: true }
+};
+
+
+/**
  * @param {object} options
  * @param {object} options.prefix=true Add vendor prefixes
  */
@@ -22,30 +106,80 @@ function Marcssist(options) {
     return new Marcssist(options);
   }
 
+  options || (options = { prefix: true });
+
+
   /**
-   * Main function to insert a style object.
+   * Also cached as |sharedSheet|.
+   * @type {CSSStyleSheet}
+   */
+
+  this._sheet = null;
+
+
+  /**
+   * @type {string}
+   */
+
+  this._prefix = null;
+
+
+  /**
+   * References the list of properties to prefix, for temporary patching of
+   * missing prefixes.
+   * @type {object}
+   */
+
+  this._prefixedProps = prefixedProps;
+
+
+  /**
+   * References the list of values to prefix, for temporary patching of
+   * missing prefixes.
+   * @type {object}
+   */
+
+  this._prefixedValues = prefixedValues;
+
+
+  /**
+   * Insert a style object as a class in a style sheet.
    *
    * @param {object} style
    * @param {string} selector= Optional prefix for class name.
    * @returns {string}
    */
-  this.add = function (style, selector) {
+
+  this.style = function (style, selector) {
+    if (style == null) return "";
+
+    if (this._sheet == null) {
+      this._sheet = sharedSheet = (sharedSheet || createStyleSheet());
+    }
+    if (options.prefix && this._prefix == null) {
+      this._prefix = currentPrefix = (currentPrefix || getPrefix());
+    }
+
     var className = "mx__"+(classId++);
     selector = (selector ? selector+" ." : ".") + className;
+
     var rules = rulesFromStyle(selector, style);
     if (options == null || options.prefix !== false) {
       rules.forEach(function(set) {
-        addPrefixes(set.style);
+        addPrefixes(set.style, currentPrefix);
       });
     }
-    insertRules(rules);
+
+    insertRules(rules, this._sheet);
+
     return className;
   };
+
 }
 
 
 var marcssist = Marcssist;
-marcssist.add = new Marcssist().add;
+marcssist.style = new Marcssist().style;
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = marcssist;
@@ -55,59 +189,33 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * Prefix detected when updating |prefixedProps|.
- * @type {string?}
+ * @returns {string?}
  */
 
-var prefix = null;
-
-
-/**
- * Lookup map of properties that should be prefixed.
- * @type {object}
- */
-
-var prefixedProps = {};
-
-function updatePrefixedProps() {
-  var prefixRe = /^(-[a-z]+-)(.*)/;
-  var style = window.getComputedStyle(document.documentElement);
-  for (var i = 0, l = style.length, match; i < l; i++) {
-    if ((match = style[i].match(prefixRe)) && !(match[2] in style)) {
-      prefix || (prefix = match[1]);
-      prefixedProps[match[2]] = true;
+function getPrefix() {
+  var dummyStyle = getComputedStyle(document.documentElement);
+  for (var i = dummyStyle.length, prop; i > 0; i--) {
+    prop = dummyStyle[i];
+    if (prop[0] === "-") {
+      return prop.split("-")[1];
     }
   }
+  return "";
 }
 
 
 /**
- * Lookup map of property/value pairs that should be prefixed.
- * @type {object}
+ * @returns {CSSStyleSheet}
  */
-
-var prefixedValues = {};
-
-
-/**
- * Style object used to test if a property/value pair is supported.
- * @type {object}
- */
-
-var dummyStyle = document.createElement("div").style;
-
-
-/**
- * Style element, used for all instances.
- * @type {Element?}
- */
-
-var sheet = null;
 
 function createStyleSheet() {
+  if (document.head == null) {
+    throw new Error("Can't add style sheet before <head> is available");
+  }
   var ss = document.createElement("style");
+  ss.id = "mx__styles";
   document.head.appendChild(ss);
-  sheet = ss.sheet;
+  return ss.sheet;
 }
 
 
@@ -131,7 +239,7 @@ function rulesFromStyle(selector, block) {
       );
     } else {
       if (prop === "content") value = "'"+value+"'";
-      style[hyphenate(prop)] = value;
+      style[prop] = value;
     }
   }
   rules.push({
@@ -148,12 +256,11 @@ function rulesFromStyle(selector, block) {
  * @param {array} rules
  */
 
-function insertRules(rules) {
-  if (sheet === null) createStyleSheet();
+function insertRules(rules, sheet) {
   rules.forEach(function(rule) {
     var pairs = [], prop;
     for (prop in rule.style) {
-      pairs.push(prop + ":" + rule.style[prop]);
+      pairs.push(hyphenate(prop) + ":" + rule.style[prop]);
     }
     sheet.insertRule(rule.selector + "{" + pairs.join(";") + "}", 0);
   });
@@ -179,45 +286,22 @@ function combineSelectors(a, b) {
  * Add vendor prefixes to style block.
  *
  * @param {object} style
+ * @param {string} prefix
  * @returns {object} same object as argument
  */
 
-function addPrefixes(style) {
+function addPrefixes(style, prefix) {
   var value, prop;
   for (prop in style) {
     value = style[prop];
-    prop = prefixProp(prop) || prop;
-    value = prefixValue(value, prop) || value;
-    style[prop] = value;
+    if (prefixedProps[prop]) {
+      style["-"+prefix+capitalize(prop)] = value;
+    }
+    if (prefixedValues[value] && prefixedValues[value][prop]) {
+      style[prop] = "-"+prefix+value;
+    }
   }
   return style;
-}
-
-
-function prefixProp(prop) {
-  if (prefix === null) updatePrefixedProps();
-  if (prefixedProps[prop]) {
-    return prefix + prop;
-  }
-}
-
-
-function prefixValue(value, prop) {
-  if (prefix === null) updatePrefixedProps();
-  // Cached
-  if (prefixedValues[prop] === value) {
-    return prefix + value;
-  }
-  dummyStyle[prop] = "";
-  dummyStyle[prop] = value;
-  // Supported
-  if (!!dummyStyle[prop]) return;
-  dummyStyle[prop] = prefix+value;
-  // Supported with prefix
-  if (!!dummyStyle[prop]) {
-    prefixedValues[prop] = value;
-    return prefix + value;
-  }
 }
 
 
@@ -225,6 +309,9 @@ function hyphenate(str) {
   return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase(); });
 }
 
+function capitalize(str) {
+  return str[0].toUpperCase() + str.slice(1);
+}
 
 /**
  * Check if an object is an object, and has the original toString method.
