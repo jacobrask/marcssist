@@ -8,9 +8,10 @@ Turn a JavaScript object with CSS styles into a class in a stylesheet.
     var buttonStyle = {
       background: "red",
       color: "yellow",
-      padding: "1em"
+      padding: 10,
+      ":hover" { color: "black" }
     };
-    var buttonClass = mx.add(buttonStyle);
+    var buttonClass = mx.style(buttonStyle);
     myDiv.classList.add(buttonClass);
 
 
@@ -25,41 +26,44 @@ The `style` attribute has some limitations, like the inability to add pseudo cla
 
 # API
 
-## marcssist.add(style)
+## `marcssist.add(style)`
 
 Add a style object, returning a class name used to apply the styles.
 
 
-## marcssist(options)
+## `marcssist(options)`
 
 Create a new instance of marcssist with the supplied options. Valid options and their defaults are:
 
- * `prefix` = true
+ * Vendor prefixing: `prefix = true`
+ * Auto units: `unit = "px"`
 
 
-## Advanced examples
+## Nested selectors
 
-Any property whose value is an object will get "expanded" to a child selector.
+If an object is passed as a value to a key, the key is considered a selector instead of a CSS property. It is simply treated as a new style block, but with the key appended to the returned class name. All selectors not starting with `:` or `[` will automatically be separated by whitespace.
 
-    var buttonStyle = {
-      background: "red",
-      padding: "1em",
-      a: {
-        color: "yellow",
-        ":hover": { color: "black" }
-      }
-    };
-    var buttonClass = mx.add(buttonStyle);
+    mx.style({ background: "red", a: { ":hover": color: "blue" }});
+    // Adds the CSS rules:
+    // .className { background: red }
+    // .className a:hover { color: blue }
 
-    // Produces the rules:
-    // .mx__0 { background: red; padding: 1em }
-    // .mx__0 a { color: yellow }
-    // .mx__0 a:hover { color: black }
- 
 
 ## Vendor prefixing
 
-Which vendor prefix to use and for which properties is determined at the first call to `add()`. It's done by looping through all style properties on an element, and if a `-*-` prefixed property does not exist unprefixed, it's registered as needing a prefix. The procedure for values is similar, testing if a property value that doesn't work unprefixed works with the current vendor prefix.
+The current vendor prefix is automatically detected, and then added to a number of pre-defined properties and property/value combinations. If you're missing a property, you can add it to the `marcssist._prefixed(Props|Values)` objects. See source code for format.
+
+    mx.style({ columnCount: 2 }});
+    // Adds the CSS rule (depending on your browser):
+    // .className { -webkit-column-count: 2 }
+
+Support for prefixed values is currently limited.
+
+
+## Auto units
+
+If a number is specified, it will be converted to a string with an appended unit. This is convenient for things like `{ padding: PADDING + 5 }`.
+
 
 # Prior art
 
@@ -69,7 +73,7 @@ Which vendor prefix to use and for which properties is determined at the first c
 # MIT License
 
 ```
-Copyright (c) 2014 Jacob Rask, <http://jacobrask.net>
+Copyright (c) 2014 Jacob Rask, <jacob@jacobrask.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -8,7 +8,7 @@ describe("marcssist", function(){
 });
 
 
-describe("marcssist.style()", function(){
+describe("marcssist.style(style)", function(){
 
   var mx = window.marcssist;
   var testElem;
@@ -87,8 +87,50 @@ describe("marcssist.style()", function(){
   });
 
 
+  describe("add units", function() {
+
+    it("should add units to some properties", function() {
+      mx.style({ lineHeight: 1, width: 1 });
+      expect(mx._sheet.cssRules[0].style.lineHeight).to.equal("1");
+      expect(mx._sheet.cssRules[0].style.width).to.equal("1px");
+    });
+
+  });
+
+
 });
 
+
+
+describe("marcssist(options)", function(){
+
+  it("should have an option to disable vendor prefixes", function() {
+    var mx = marcssist({ prefix: false });
+    mx.style({ columnCount: 1, flexGrow: 1 });
+    expect(mx._prefix).to.equal(null);
+    expect(mx._sheet.cssRules[0].style.webkitColumnCount).to.not.equal("1");
+    expect(mx._sheet.cssRules[0].style.flexGrow).to.equal("1");
+  });
+
+
+  it("should have an option to disable auto units", function() {
+    var mx = marcssist({ prefix: false });
+    mx.style({ lineHeight: 1, width: 1 });
+    expect(mx._sheet.cssRules[0].style.lineHeight).to.equal("1");
+    expect(mx._sheet.cssRules[0].style.width).to.equal("1px");
+  });
+
+
+  it("should have an option to change auto units", function() {
+    var mx = marcssist({ unit: "em" });
+    mx.style({ lineHeight: 1, width: 1 });
+    expect(mx._sheet.cssRules[0].style.lineHeight).to.equal("1");
+    expect(mx._sheet.cssRules[0].style.width).to.equal("1em");
+  });
+
+
+
+});
 
 function clearSheet(sheet) {
   if (sheet == null) return;

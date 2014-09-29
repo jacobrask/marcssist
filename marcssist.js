@@ -3,14 +3,6 @@
 
 
 /**
- * Global id to keep class names unique.
- * @type {number}
- */
-
-var classId = 0;
-
-
-/**
  * Reuse the same style sheet for all instances.
  * @type {CSSStyleSheet?}
  */
@@ -95,8 +87,40 @@ var prefixedValues = {
 
 
 /**
+ * Properties that accept a number but do not need a unit.
+ * @type {object}
+ */
+
+var unitlessProps = {
+  columnCount: true,
+  fillOpacity: true,
+  flex: true,
+  flexGrow: true,
+  flexShrink: true,
+  fontWeight: true,
+  lineClamp: true,
+  lineHeight: true,
+  opacity: true,
+  order: true,
+  orphans: true,
+  widows: true,
+  zIndex: true,
+  zoom: true
+};
+
+
+/**
+ * Global id to keep class names unique.
+ * @type {number}
+ */
+
+var classId = 0;
+
+
+/**
  * @param {object} options
  * @param {object} options.prefix=true Add vendor prefixes
+ * @param {object} options.unit=px Unit to add to numeric values
  */
 
 function Marcssist(options) {
@@ -106,7 +130,9 @@ function Marcssist(options) {
     return new Marcssist(options);
   }
 
-  options || (options = { prefix: true });
+  options || (options = {});
+  options.prefix = !options.hasOwnProperty("prefix") ? true : !!options.prefix;
+  options.unit = options.hasOwnProperty("unit") ? options.unit : "px";
 
 
   /**
@@ -164,9 +190,14 @@ function Marcssist(options) {
     selector = (selector ? selector+" ." : ".") + className;
 
     var rules = rulesFromStyle(selector, style);
-    if (options == null || options.prefix !== false) {
+    if (options.prefix || options.unit !== "") {
       rules.forEach(function(set) {
-        addPrefixes(set.style, currentPrefix);
+        if (options.unit !== "") {
+          addUnit(set.style, options.unit);
+        }
+        if (options.prefix) {
+          addPrefix(set.style, currentPrefix);
+        }
       });
     }
 
@@ -290,16 +321,38 @@ function combineSelectors(a, b) {
  * @returns {object} same object as argument
  */
 
-function addPrefixes(style, prefix) {
+function addPrefix(style, prefix) {
+  prefix = "-"+prefix;
   var value, prop;
   for (prop in style) {
     value = style[prop];
     if (prefixedProps[prop]) {
-      style["-"+prefix+capitalize(prop)] = value;
+      style[prefix+capitalize(prop)] = value;
     }
     if (prefixedValues[value] && prefixedValues[value][prop]) {
-      style[prop] = "-"+prefix+value;
+      style[prop] = prefix+value;
     }
+  }
+  return style;
+}
+
+
+/**
+ * Add unit to numeric values not in |unitlessProps|.
+ *
+ * @param {object} style
+ * @param {string} unit
+ * @returns {object} same object as argument
+ */
+
+function addUnit(style, unit) {
+  var value, prop;
+  for (prop in style) {
+    value = style[prop];
+    if (!isNaN(value) && !unitlessProps[prop]) {
+      value = value + unit;
+    }
+    style[prop] = value;
   }
   return style;
 }
