@@ -9,7 +9,7 @@ Turn a JavaScript object with CSS styles into a class in a stylesheet.
       color: "yellow",
       padding: 10,
       ":hover" { color: "black" }
-    };
+    });
     myDiv.classList.add(buttonClass);
     // .mx__0 { color: yellow; padding: 10px }
     // .mx__0:hover { color: black }

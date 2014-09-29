@@ -223,7 +223,7 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * @returns {string?}
+ * @returns {string}
  */
 
 function getPrefix() {
@@ -327,15 +327,19 @@ function combineSelectors(a, b) {
  */
 
 function addPrefix(style, prefix) {
-  prefix = "-"+prefix;
   var value, prop;
   for (prop in style) {
     value = style[prop];
     if (prefixedProps[prop]) {
-      style[prefix+capitalize(prop)] = value;
+      style[capitalize(prefix)+capitalize(prop)] = value;
     }
     if (prefixedValues[value] && prefixedValues[value][prop]) {
-      style[prop] = prefix+value;
+      if (supports(prop, value)) {
+        // No change in object needed, and no check needed next time
+        prefixedValues[value][prop] = false;
+      } else {
+        style[prop] = "-"+prefix+"-"+value;
+      }
     }
   }
   return style;
@@ -363,6 +367,13 @@ function addUnit(style, unit) {
 }
 
 
+var style = document.createElement("div").style;
+function supports(prop, value) {
+  style[prop] = "";
+  style[prop] = value;
+  return !!style[prop];
+}
+
 function hyphenate(str) {
   return str.replace(/[A-Z]/g, function($0) { return '-'+$0.toLowerCase(); });
 }
@@ -370,6 +381,7 @@ function hyphenate(str) {
 function capitalize(str) {
   return str[0].toUpperCase() + str.slice(1);
 }
+
 
 /**
  * Check if an object is an object, and has the original toString method.
