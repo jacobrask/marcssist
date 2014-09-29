@@ -65,6 +65,8 @@ var prefixedProps = {
   lineBreak: true,
   lineClamp: true,
   order: true,
+  perspective: true,
+  perspectiveOrigin: true,
   transform: true,
   transformOrigin: true,
   transformStyle: true,
@@ -169,15 +171,16 @@ function Marcssist(options) {
 
 
   /**
-   * Insert a style object as a class in a style sheet.
+   * Insert one or more style objects as a class in a style sheet.
    *
-   * @param {object} style
-   * @param {string} selector= Optional prefix for class name.
+   * @param {array.object|object} style
+   * @param {string} selector= Optional parent selector
    * @returns {string}
    */
 
-  this.style = function (style, selector) {
-    if (style == null) return "";
+  this.style = function (styles, selector) {
+    if (styles == null) return "";
+    if (!Array.isArray(styles)) styles = [styles];
 
     if (this._sheet == null) {
       this._sheet = sharedSheet = (sharedSheet || createStyleSheet());
@@ -189,7 +192,7 @@ function Marcssist(options) {
     var className = "mx__"+(classId++);
     selector = (selector ? selector+" ." : ".") + className;
 
-    var rules = rulesFromStyle(selector, style);
+    var rules = rulesFromStyles(selector, styles);
     if (options.prefix || options.unit !== "") {
       rules.forEach(function(set) {
         if (options.unit !== "") {
@@ -255,24 +258,26 @@ function createStyleSheet() {
  * represented by selector/style pairs.
  *
  * @param {string} selector Base CSS selector
- * @param {object} block CSS property/values declaration block
+ * @param {array.object} blocks CSS property/values declaration blocks
  * @returns {array.object}
  */
 
-function rulesFromStyle(selector, block) {
+function rulesFromStyles(selector, blocks) {
   var prop, value, style = {}, rules = [];
-  for (prop in block) {
-    value = block[prop];
-    // Found an object, recurse with property added to selector.
-    if (isPlainObject(value)) {
-      rules = rules.concat(
-        rulesFromStyle(combineSelectors(selector, prop), value)
-      );
-    } else {
-      if (prop === "content") value = "'"+value+"'";
-      style[prop] = value;
+  blocks.forEach(function(block) {
+    for (prop in block) {
+      value = block[prop];
+      // Found an object, recurse with property added to selector.
+      if (isPlainObject(value)) {
+        rules = rules.concat(
+          rulesFromStyles(combineSelectors(selector, prop), [value])
+        );
+      } else {
+        if (prop === "content") value = "'"+value+"'";
+        style[prop] = value;
+      }
     }
-  }
+  });
   rules.push({
     selector: selector,
     style: style
@@ -348,7 +353,7 @@ function addPrefix(style, prefix) {
 function addUnit(style, unit) {
   var value, prop;
   for (prop in style) {
-    value = style[prop];
+    value = style[prop] + "";
     if (!isNaN(value) && !unitlessProps[prop]) {
       value = value + unit;
     }

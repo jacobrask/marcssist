@@ -54,6 +54,15 @@ describe("marcssist.style(style)", function(){
       expect(ruleStyle["height"]).to.equal("2px");
     });
 
+    it("should accept an array of style objects", function() {
+      mx.style([{width: "1px"}, {height: "2px"}, {width:"3px"}]);
+      expect(mx._sheet.cssRules).to.have.length(1);
+      var ruleStyle = mx._sheet.cssRules[0].style;
+      expect(ruleStyle).to.have.length(2);
+      expect(ruleStyle["width"]).to.equal("3px");
+      expect(ruleStyle["height"]).to.equal("2px");
+    });
+
     it("accepts camelCased properties", function() {
       mx.style({ borderRadius: "1px" });
       expect(mx._sheet.cssRules).to.have.length(1);

@@ -5,14 +5,14 @@ Turn a JavaScript object with CSS styles into a class in a stylesheet.
 # Example
 
     var mx = window.marcssist;
-    var buttonStyle = {
-      background: "red",
+    var buttonClass = mx.style({
       color: "yellow",
       padding: 10,
       ":hover" { color: "black" }
     };
-    var buttonClass = mx.style(buttonStyle);
     myDiv.classList.add(buttonClass);
+    // .mx__0 { color: yellow; padding: 10px }
+    // .mx__0:hover { color: black }
 
 
 # Why?
@@ -28,7 +28,10 @@ The `style` attribute has some limitations, like the inability to add pseudo cla
 
 ## `marcssist.add(style)`
 
-Add a style object, returning a class name used to apply the styles.
+Add a style object, returning a class name used to apply the styles. If `style` is an array, the properties are added left-to-right, with the properties on the last object overriding existing ones.
+
+    mx.style([{ width: 1 }, { width: 2 }]);
+    // .mx__1 { width: 2px }
 
 
 ## `marcssist(options)`
@@ -44,9 +47,8 @@ Create a new instance of marcssist with the supplied options. Valid options and 
 If an object is passed as a value to a key, the key is considered a selector instead of a CSS property. It is simply treated as a new style block, but with the key appended to the returned class name. All selectors not starting with `:` or `[` will automatically be separated by whitespace.
 
     mx.style({ background: "red", a: { ":hover": color: "blue" }});
-    // Adds the CSS rules:
-    // .className { background: red }
-    // .className a:hover { color: blue }
+    // .mx__2 { background: red }
+    // .mx__2 a:hover { color: blue }
 
 
 ## Vendor prefixing
@@ -54,8 +56,7 @@ If an object is passed as a value to a key, the key is considered a selector ins
 The current vendor prefix is automatically detected, and then added to a number of pre-defined properties and property/value combinations. If you're missing a property, you can add it to the `marcssist._prefixed(Props|Values)` objects. See source code for format.
 
     mx.style({ columnCount: 2 }});
-    // Adds the CSS rule (depending on your browser):
-    // .className { -webkit-column-count: 2 }
+    // .mx__3 { -webkit-column-count: 2 }
 
 Support for prefixed values is currently limited.
 
@@ -65,9 +66,11 @@ Support for prefixed values is currently limited.
 If a number is specified, it will be converted to a string with an appended unit. This is convenient for things like `{ padding: PADDING + 5 }`.
 
 
-# Prior art
+# Related projects and suggested companions
 
+ * [JCSS](https://github.com/tenphi/jcss)
  * [RCSS](https://github.com/chenglou/RCSS)
+ * [TinyColor](https://github.com/bgrins/TinyColor/)
 
 
 # MIT License
