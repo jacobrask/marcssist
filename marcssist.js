@@ -1,6 +1,21 @@
-(function() {
-"use strict";
+/**
+ * Turn a JavaScript object with CSS styles into a class in a stylesheet.
+ *
+ * @example
+ *
+ *     var mx = window.marcssist;
+ *     var buttonClass = mx.style({
+ *       color: "yellow",
+ *       padding: 10,
+ *       ":hover" { color: "black" }
+ *     });
+ *     myDiv.classList.add(buttonClass);
+ *     // .mx__0 { color: yellow; padding: 10px }
+ *     // .mx__0:hover { color: black }
+ */
 
+;(function () {
+"use strict";
 
 /**
  * Reuse the same style sheet for all instances.
@@ -51,6 +66,7 @@ var prefixedProps = {
   alignContent: true,
   alignItems: true,
   alignSelf: true,
+  filter: true,
   flex: true,
   flexBasis: true,
   flexDirection: true,
@@ -84,7 +100,8 @@ var prefixedProps = {
  */
 
 var prefixedValues = {
-  flex: { display: true }
+  flex: { display: true },
+  "inline-flex": { display: true }
 };
 
 
@@ -120,6 +137,15 @@ var classId = 0;
 
 
 /**
+ * If vendor prefixing is enabled, the current vendor prefix is automatically
+ * detected, and then added to the properties and values specified in
+ * |prefixedProps| and |prefixedValues|.
+ *
+ * If auto units is enabled, any property value that is a number will be
+ * converted to a string with the specified unit appended.
+ *
+ * @constructor
+ *
  * @param {object} options
  * @param {object} options.prefix=true Add vendor prefixes
  * @param {object} options.unit=px Unit to add to numeric values
@@ -180,7 +206,6 @@ function Marcssist(options) {
 
   this.style = function (styles, selector) {
     if (styles == null) return "";
-    if (!Array.isArray(styles)) styles = [styles];
 
     if (this._sheet == null) {
       this._sheet = sharedSheet = (sharedSheet || createStyleSheet());
@@ -196,10 +221,10 @@ function Marcssist(options) {
     if (options.prefix || options.unit !== "") {
       rules.forEach(function(set) {
         if (options.unit !== "") {
-          addUnit(set.style, options.unit);
+          addUnit(set[1], options.unit);
         }
         if (options.prefix) {
-          addPrefix(set.style, currentPrefix);
+          addPrefix(set[1], currentPrefix);
         }
       });
     }
@@ -209,16 +234,6 @@ function Marcssist(options) {
     return className;
   };
 
-}
-
-
-var marcssist = Marcssist;
-marcssist.style = new Marcssist().style;
-
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = marcssist;
-} else {
-  window.marcssist = marcssist;
 }
 
 
@@ -255,22 +270,23 @@ function createStyleSheet() {
 
 /**
  * Flattens any nested selector combinators, returning CSS rule sets
- * represented by selector/style pairs.
+ * as selector/style vectors.
  *
  * @param {string} selector Base CSS selector
- * @param {array.object} blocks CSS property/values declaration blocks
- * @returns {array.object}
+ * @param {object|array.object} styles CSS property/values declaration blocks
+ * @returns {array.array}
  */
 
-function rulesFromStyles(selector, blocks) {
+function rulesFromStyles(selector, styles) {
+  if (!Array.isArray(styles)) styles = [styles];
   var prop, value, style = {}, rules = [];
-  blocks.forEach(function(block) {
+  styles.forEach(function(block) {
     for (prop in block) {
       value = block[prop];
-      // Found an object, recurse with property added to selector.
-      if (isPlainObject(value)) {
+      // Found an object or array, recurse with property added to selector.
+      if (isPlainObject(value) || Array.isArray(value)) {
         rules = rules.concat(
-          rulesFromStyles(combineSelectors(selector, prop), [value])
+          rulesFromStyles(combineSelectors(selector, prop), value)
         );
       } else {
         if (prop === "content") value = "'"+value+"'";
@@ -278,10 +294,7 @@ function rulesFromStyles(selector, blocks) {
       }
     }
   });
-  rules.push({
-    selector: selector,
-    style: style
-  });
+  rules.push([ selector, style ]);
   return rules;
 }
 
@@ -295,10 +308,12 @@ function rulesFromStyles(selector, blocks) {
 function insertRules(rules, sheet) {
   rules.forEach(function(rule) {
     var pairs = [], prop;
-    for (prop in rule.style) {
-      pairs.push(hyphenate(prop) + ":" + rule.style[prop]);
+    for (prop in rule[1]) {
+      pairs.push(hyphenate(prop) + ":" + rule[1][prop]);
     }
-    sheet.insertRule(rule.selector + "{" + pairs.join(";") + "}", 0);
+    if (pairs.length > 0) {
+      sheet.insertRule(rule[0] + "{" + pairs.join(";") + "}", 0);
+    }
   });
 }
 
@@ -307,14 +322,20 @@ function insertRules(rules, sheet) {
  * Pseudo classes/elements and attribute selectors should immediately
  * follow the previous selector, others should be space separated.
  *
- * @param {string} a
- * @param {string} b
- * @returns {string} "a b" or "ab"
+ * @param {string} parent
+ * @param {string} child
+ * @returns {string}
  */
 
-function combineSelectors(a, b) {
-  var separator = /^[:\[]/.test(b) ? "" : " ";
-  return a + separator + b;
+function combineSelectors(parent, child) {
+  var pseudoRe = /^[:\[]/;
+  var parents = parent.split(","), children = child.split(",");
+  return parents.map(function(parent) {
+    return children.map(function(part) {
+      var separator = pseudoRe.test(part) ? "" : " ";
+      return parent + separator + part;
+    }).join(",");
+  }).join(",");
 }
 
 
@@ -397,5 +418,20 @@ function isPlainObject(obj) {
       && Object.prototype.toString === obj.toString;
 }
 
+
+// Expose constructor/factory.
+var marcssist = Marcssist;
+
+// For convenience, also expose the main method from an instance with the
+// default options.
+marcssist.style = marcssist().style;
+
+if (typeof module !== "undefined" && typeof exports === "object") {
+  // Simplified CommonJS/Node
+  module.exports = marcssist;
+} else {
+  // Global
+  window.marcssist = marcssist;
+}
 
 })();
