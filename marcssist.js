@@ -280,6 +280,7 @@ function createStyleSheet() {
 function rulesFromStyles(selector, styles) {
   if (!Array.isArray(styles)) styles = [styles];
   var prop, value, style = {}, rules = [];
+  styles = flatten(styles);
   styles.forEach(function(block) {
     for (prop in block) {
       value = block[prop];
@@ -418,6 +419,23 @@ function isPlainObject(obj) {
       && Object.prototype.toString === obj.toString;
 }
 
+
+/**
+ * Recursively flatten an array.
+ *
+ * @param {Array} xs
+ * @param {Array} acc=
+ */
+
+function flatten(xs, acc) {
+  acc || (acc = []);
+  for (var i = 0, len = xs.length, x; i < len; i++) {
+    x = xs[i];
+    if (Array.isArray(x)) flatten(x, acc);
+    else acc.push(x);
+  }
+  return acc;
+}
 
 // Expose constructor/factory.
 var marcssist = Marcssist;

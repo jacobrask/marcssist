@@ -88,8 +88,17 @@ describe("marcssist.style(style)", function(){
       expect(mx._sheet.cssRules[1].style.height).to.equal("2px");
     });
 
-    it("accepts an array of style object as a property value", function() {
+    it("accepts an array of style objects as a property value", function() {
       var className = mx.style({ "b": [{ height: "1px" },{ width: "1px" }]});
+      expect(mx._sheet.cssRules).to.have.length(1);
+      expect(mx._sheet.cssRules[0].style.height).to.equal("1px");
+      expect(mx._sheet.cssRules[0].style.width).to.equal("1px");
+      expect(mx._sheet.cssRules[0].selectorText).to.equal("."+className+" "+"b");
+    });
+
+
+    it("accepts nested arrays of style objects as a property value", function() {
+      var className = mx.style({ "b": [[{ height: "1px" }],[{ width: "1px" }]]});
       expect(mx._sheet.cssRules).to.have.length(1);
       expect(mx._sheet.cssRules[0].style.height).to.equal("1px");
       expect(mx._sheet.cssRules[0].style.width).to.equal("1px");
